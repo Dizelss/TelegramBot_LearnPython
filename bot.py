@@ -1,48 +1,58 @@
 import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-
-# Импортируем настройки
 import settings
+import ephem
 
-# Логи работы бота
-logging.basicConfig(filename="bot.log", level=logging.INFO)
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from datetime import datetime
 
-# Прокси
+logging.basicConfig(format='%(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO,
+                    filename='bot.log'
+                    )
+
 PROXY = {
-    "proxy_url": settings.PROXY_URL,
-    "urllib3_proxy_kwargs": {"username": settings.PROXY_USERNAME, "password": settings.PROXY_PASSWORD}
+    'proxy_url': settings.PROXY_URL,
+    'urllib3_proxy_kwargs': {
+        'username': settings.PROXY_USERNAME,
+        'password': settings.PROXY_PASSWORD
+    }
 }
 
-# Функция обрабатывающая команду /start
-def greet_user(update, context):
-    print("Вызван /start")
-    # Выводим ответ робота в Телеграм
-    update.message.reply_text("Приветствую, Хозяин")
 
-# Функция реагирующая на введенные данные в виде текста
-def talk_to_me (update, context):
-    text = update.message.text
+def greet_user(update, context):
+    text = 'Вызван /start'
     print(text)
     update.message.reply_text(text)
 
+
+def planets(update, context):
+    planet_info = update.message.text.split(" ")
+    result_planet = planet_info[-1].capitalize()
+    print(result_planet)
+    planet = getattr(ephem, result_planet)
+    planet = planet(datetime.now())
+    constellation = ephem.constellation(planet)
+    update.message.reply_text(constellation)
+
+
+def talk_to_me(update, context):
+    user_text = update.message.text
+    print(user_text)
+    update.message.reply_text(user_text)
+
+
 def main():
-    # Создаем бота
     mybot = Updater(settings.API_KEY, use_context=True, request_kwargs=PROXY)
 
-    # Создаем переменную для более удобного вызова диспетчера
     dp = mybot.dispatcher
-    # Добавляем обработчик команды /start
     dp.add_handler(CommandHandler("start", greet_user))
-    # Добавляем обработчик для введенного типа данных: текст
+    dp.add_handler(CommandHandler("planet", planets))
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
 
-    # Добавляем запись в лог-файл о том, что бот запустился
     logging.info("Бот стартовал")
-    # Говорим боту отправлять запросы Телеграму на наличие для него сообщений
     mybot.start_polling()
-    # Зацикливаем обращения в Телеграм на наличие новых сообщений для бота
     mybot.idle()
 
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     main()
